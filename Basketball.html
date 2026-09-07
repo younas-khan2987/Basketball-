@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Basketball</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10131a;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
+#wrap{height:100vh;display:flex;align-items:center;justify-content:center}
+#game{width:min(100vw,1000px);height:min(100vh,650px);position:relative}
+canvas{width:100%;height:100%;display:block;border-radius:18px;background:#89d1ef;touch-action:none}
+.hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.box{background:#10131add;padding:9px 13px;border-radius:12px;font-weight:800}
+#menu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0009;border-radius:18px}
+.card{background:#171b24;padding:28px;border-radius:20px;text-align:center;width:min(90%,420px);box-shadow:0 12px 40px #0008}
+h1{font-size:48px;margin:0 0 8px}p{color:#ccd2dc}
+button{border:0;border-radius:12px;padding:14px 24px;font-size:18px;font-weight:800;margin:5px;cursor:pointer}
+#play{background:#f39c12}#reset{background:#eee}
+#hint{font-size:13px;color:#aeb6c4;margin-top:12px}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="game">
+<canvas id="c" width="1000" height="650"></canvas>
+<div class="hud"><div class="box">🏀 SCORE <span id="score">0</span></div><div class="box">⏱ <span id="time">60</span></div><div class="box">🔥 <span id="streak">0</span></div></div>
+<div id="menu"><div class="card"><h1>🏀</h1><h2>Basketball</h2><p>Drag from the ball toward the hoop and release to shoot.</p><button id="play">PLAY</button><button id="reset">RESET</button><div id="hint">Make as many baskets as possible in 60 seconds.</div></div></div>
+</div></div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d'),W=1000,H=650;
+let score=0,streak=0,time=60,running=false,drag=false,aim={x:0,y:0};
+let ball={x:170,y:520,r:20,vx:0,vy:0,live:false,lastY:0};
+const hoop={x:820,y:265,r:38};let timer,last=0,particles=[];
+const $=id=>document.getElementById(id);
+function reset(){score=0;streak=0;time=60;running=false;ball.live=false;ball.x=170;ball.y=520;ball.vx=ball.vy=0;particles=[];$('score').textContent=0;$('streak').textContent=0;$('time').textContent=60;$('menu').style.display='flex'}
+function start(){if(running)return;running=true;time=60;$('menu').style.display='none';clearInterval(timer);timer=setInterval(()=>{if(running){time--; $('time').textContent=time;if(time<=0){running=false;$('menu').style.display='flex';$('menu').querySelector('h2').textContent='Time Up! Score: '+score}}},1000)}
+function pos(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+function shoot(dx,dy){if(!running||ball.live)return;let d=Math.hypot(dx,dy),p=Math.min(22,Math.max(7,d/18));let a=Math.atan2(dy,dx);ball.vx=Math.cos(a)*p;ball.vy=Math.sin(a)*p;ball.live=true;ball.lastY=ball.y}
+c.addEventListener('pointerdown',e=>{if(!running||ball.live)return;let p=pos(e);if(Math.hypot(p.x-ball.x,p.y-ball.y)<70){drag=true;c.setPointerCapture(e.pointerId)}});
+c.addEventListener('pointermove',e=>{if(drag)aim=pos(e)});
+c.addEventListener('pointerup',e=>{if(!drag)return;drag=false;let p=pos(e);shoot(p.x-ball.x,p.y-ball.y)});
+$('play').onclick=()=>start();$('reset').onclick=reset;
+function burst(){for(let i=0;i<24;i++)particles.push({x:hoop.x,y:hoop.y,vx:(Math.random()-.5)*7,vy:-Math.random()*7,life:1})}
+function draw(){
+x.clearRect(0,0,W,H);x.fillStyle='#89d1ef';x.fillRect(0,0,W,H);
+x.fillStyle='#3c3f48';x.fillRect(0,0,W,120);
+for(let i=0;i<28;i++){x.fillStyle=['#e74c3c','#3498db','#f1c40f','#2ecc71'][i%4];x.beginPath();x.arc(20+i*37,55,13,0,7);x.fill()}
+x.fillStyle='#c88b4c';x.fillRect(0,120,W,H-120);x.strokeStyle='#fff';x.lineWidth=5;
+x.beginPath();x.moveTo(0,585);x.lineTo(W,585);x.stroke();x.beginPath();x.arc(175,520,150,-1.57,1.57);x.stroke();
+x.fillStyle='#eee';x.fillRect(880,155,15,210);x.strokeStyle='#fff';x.lineWidth=7;x.strokeRect(735,205,110,82);
+x.strokeStyle='#e74c3c';x.lineWidth=9;x.beginPath();x.arc(hoop.x,hoop.y,hoop.r,0,7);x.stroke();
+x.strokeStyle='#fff';x.lineWidth=2;for(let i=0;i<6;i++){x.beginPath();x.moveTo(790+i*12,292);x.lineTo(800+i*7,340);x.stroke()}x.beginPath();x.moveTo(790,292);x.lineTo(830,340);x.stroke();
+x.fillStyle='#222';x.beginPath();x.arc(125,425,28,0,7);x.fill();x.fillStyle='#2980b9';x.fillRect(95,453,60,85);x.strokeStyle='#222';x.lineWidth=12;x.beginPath();x.moveTo(112,535);x.lineTo(90,585);x.moveTo(140,535);x.lineTo(165,585);x.stroke();
+if(drag&&!ball.live){x.strokeStyle='#fff';x.lineWidth=4;x.setLineDash([10,8]);x.beginPath();x.moveTo(ball.x,ball.y);x.lineTo(aim.x,aim.y);x.stroke();x.setLineDash([])}
+x.fillStyle='#d35400';x.beginPath();x.arc(ball.x,ball.y,ball.r,0,7);x.fill();x.strokeStyle='#222';x.lineWidth=2;x.stroke();x.beginPath();x.arc(ball.x,ball.y,14,-.8,.8);x.stroke();x.beginPath();x.moveTo(ball.x-20,ball.y);x.quadraticCurveTo(ball.x,ball.y+8,ball.x+20,ball.y);x.stroke();
+particles.forEach(p=>{x.globalAlpha=p.life;x.fillStyle='#fff';x.fillRect(p.x,p.y,5,5);x.globalAlpha=1});
+}
+function loop(t){let dt=Math.min(2,(t-last)/16.67||1);last=t;
+if(ball.live){ball.lastY=ball.y;ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;ball.vy+=.38*dt;ball.vx*=.997;
+if(ball.vy>0&&ball.lastY<hoop.y&&ball.y>=hoop.y&&ball.x>hoop.x-hoop.r&&ball.x<hoop.x+hoop.r){score++;streak++;$('score').textContent=score;$('streak').textContent=streak;burst();ball.live=false;ball.x=170;ball.y=520;ball.vx=ball.vy=0}
+if(ball.y>700||ball.x>1050||ball.x<-50){streak=0;$('streak').textContent=0;ball.live=false;ball.x=170;ball.y=520;ball.vx=ball.vy=0}}
+particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.2;p.life-=.025});particles=particles.filter(p=>p.life>0);draw();requestAnimationFrame(loop)}
+reset();requestAnimationFrame(loop);
+</script></body></html>
